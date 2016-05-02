@@ -45,11 +45,11 @@
 
 \begin{document}
 
-\title{CI4251 - Programación Funcional Avanzada \\ Tarea 1}
+\title{CI4251 - Programación Funcional Avanzada \\ Respuesta de la Tarea 1}
 
-\author{Ernesto Hernández-Novich\\
-86-17791\\
-\href{mailto:emhn@usb.ve}{<emhn@usb.ve>}}
+\author{Gustavo Gutiérrez\\
+11-10428\\
+\href{mailto:11-10428@usb.ve}{<11-10428@usb.ve>}}
 
 \date{Abril 27, 2016}
 
@@ -59,23 +59,7 @@
 
 \section{Machine Learning}
 
-En este ejercicio, investigaremos la técnica de Regresión Lineal
-Multivariable con el método de \emph{Gradient Descent}, aprovechando
-las ecuaciones normales. Implantaremos el algoritmo paso a paso en
-Haskell, aprovechando \emph{folds} y \emph{unfolds}.
-
-No es necesaria experiencia previa con el Algoritmo, pues todos los
-detalles serán presentados a lo largo del problema. Sugiero que
-construya las funciones en el mismo orden en que se van proponiendo,
-pues van aumentando de complejidad.
-
-\subsection{Definiciones Generales}
-
-Para el desarrollo de la solución, serán necesarios los módulos
-\footnote{Los dos últimos opcionales si quiere tener el
-gráfico que muestra la convergencia.}
-
-\begin{lstlisting}
+\ignore{
 
 > import Data.List
 > import Data.Functor
@@ -85,96 +69,22 @@ gráfico que muestra la convergencia.}
 > import Graphics.Rendering.Chart.Easy
 > import Graphics.Rendering.Chart.Backend.Cairo
 
-\end{lstlisting}
-
-Las técnicas de \emph{Machine Learning} operan sobre conjuntos
-de datos o muestras. En este caso, existe un conjunto de muestras
-que serán usadas para ``aprender'', y así poder hacer proyecciones
-sobre muestras fuera de ese conjunto. Para user el método de
-regresión lineal multivariable, las muestras son \emph{vectores}
-$(x_1,x_2,\ldots,x_n)$ acompañados del valor asociado $y$
-correspondiente.
-
-En este ejercicio, nos limitaremos a usar vectores de dos variables,
-pero usaremos un tipo polimórfico basado en listas, para poder
-utilizar \texttt{Float} o \texttt{Double} según nos convenga, y
-modelar vectores de longitud arbitraria. Su programa no puede
-hacer ninguna suposición sobre la longitud de los vectores, más
-allá de que todos son del mismo tamaño.
-
-Así, definiremos el tipo polimórfico
-
-\begin{lstlisting}
-
 > data Sample a = Sample { x :: [a], y :: a }
 >      deriving (Show)
-
-\end{lstlisting}
-
-\newpage
-
-Teniendo una colección de muestras como la anterior, el algoritmo
-calcula una \emph{hipótesis}, que no es más que un \emph{vector}
-de coeficientes $(\theta_0, \theta_1, \ldots, \theta_n)$ tal que
-minimiza el error de predicción
-$(\theta_0 + \theta_1 \times x_1 + \ldots + \theta_n x_n - y)$
-para toda la colección de muestras.
-
-
-\begin{lstlisting}
 
 > data Hypothesis a = Hypothesis { c :: [a] }
 >      deriving (Show)
 
-\end{lstlisting}
-
-En el caso general, asegurar la convergencia del algoritmo en un
-tiempo razonable es hasta cierto punto ``artístico''. Sin entrar en
-detalles, es necesario un coeficiente $\alpha$ que regule
-cuán rápido se desciende por el gradiente
-
-\begin{lstlisting}
-
 > alpha :: Double
 > alpha = 0.03
-
-\end{lstlisting}
-
-También hace falta determinar si el algoritmo dejó de progresar,
-para lo cual definiremos un márgen de convergencia $\epsilon$
-muy pequeño
-
-\begin{lstlisting}
 
 > epsilon :: Double
 > epsilon = 0.0000001
 
-\end{lstlisting}
-
-Finalmente, el algoritmo necesita una hipótesis inicial, a partir
-de la cual comenzar a calcular gradientes y descender hasta encontrar
-el mínimo, con la esperanza que sea un mínimo global. Para nuestro
-ejercicio, utilizaremos
-
-\begin{lstlisting}
-
 > guess :: Hypothesis Double
-> guess = Hypothesis { c = [0.0, 0.0, 0.0] }
-
-\end{lstlisting}
-
-\subsection{Muestras de Entrenamiento}
-
-En este archivo se incluye la definición
-
-\begin{lstlisting}
+> guess = Hypothesis { c = [1.0, 2.0, 3.0] }
 
 > training :: [Sample Double]
-
-\end{lstlisting}
-
-\ignore{
-
 > training = [ 
 >  Sample { x = [  0.1300098690745405, -0.2236751871685913 ], y = 399900 },
 >  Sample { x = [ -0.5041898382231769, -0.2236751871685913 ], y = 329900 },
@@ -226,38 +136,24 @@ En este archivo se incluye la definición
 
 }
 
-que cuenta con 47 muestras de entrenamiento listas para usar.
-Tampoco debe preocuparle mucho qué representan -- al algoritmo no
-le importan y Ud. tampoco tiene que preocuparse por eso.
-\footnote{En la práctica, las muestras suelen estar en diferentes
-escalas (precio en miles, unidades de Frobs, porcentajes, etc.) y
-uno de los trabajos previos es normalizar las medidas. Ya eso fue
-hecho por Ud. porque no es importante para esta materia.}
-
-\subsection{Ahora le toca a Ud.}
+\subsection{Implementación}
 
 \subsubsection{Comparar en punto flotante}
 
-No se puede y Ud. lo sabe. Pero necesitamos una manera de determinar
-si la diferencia entre dos números en punto flotante es
-$\epsilon-$despreciable
+Dos flotantes se consideraran \emph{cercanos} en el caso en el que la
+diferencia entre ambos sea menor a $\epsilon$.
 
 \begin{lstlisting}
-
 > veryClose :: Double -> Double -> Bool
 > veryClose v0 v1 = abs (v1 - v0) < epsilon 
 
 \end{lstlisting}
 
-Por favor \textbf{no} use un \texttt{if}\ldots
-
 \subsubsection{Congruencia dimensional}
 
-Seguramente notó que los vectores con muestras
-tienen dimensión $n$, pero la hipótesis tiene dimensión $n+1$.
-Eso es porque la hipótesis necesariamente debe agregar un coeficiente
-constante para la interpolación lineal. En consecuencia \emph{todas}
-las muestras necesitan incorporar $x_0 = 1$.
+Para solucionar la congruencia dimensional se le hace un map a la lista
+de Samples con una función que toma un Sample y le agrega un uno a su 
+lista de coeficientes.
 
 \begin{lstlisting}
 
@@ -267,16 +163,13 @@ las muestras necesitan incorporar $x_0 = 1$.
 
 \end{lstlisting}
 
-Escriba la función \texttt{addOnes} usando exclusivamente funciones
-de orden superior y en estilo \emph{point-free} (con argumento
-implícito, como puede ver).
-
 \subsubsection{Evaluando Hipótesis}
-
-Si tanto una hipótesis $\theta$ como una muestra $X$ son vectores
-de $n+1$ dimensiones, entonces se puede evaluar la hipótesis en
-$h_\theta(X) = \theta^TX$ calculando el producto punto
-de ambos vectores
+La evaluación de la hipótesis sobre una muestra implica realizar el producto punto
+de el vector de coeficientes de la hipotesis con el vector $x$ de la muestra.
+Partiendo de la suposición de que ambos vectores tienen la misma dimensión
+se puede definir el producto punto como un \emph{foldl} sobre el zip de ambos vectores.
+La función pasada al fold toma el par ($h_i$ , $x_i$), multiplica ambos términos
+y los suma al acumulador.
 
 \begin{lstlisting}
 
@@ -285,59 +178,32 @@ de ambos vectores
 >       where acum sum (h,s) = sum + (h*s)
 
 \end{lstlisting}
-
-Escriba la función \texttt{theta} usando exclusivamente funciones
-de orden superior. Puede suponer que ambos vectores tienen las
-dimensiones correctas.
-
-Una vez que pueda evaluar hipótesis, es posible determinar cuán
-buena es la hipótesis sobre el conjunto de entrenamiento. La calidad
-de la hipótesis se mide según su \textbf{costo} $J(\theta)$ que no
-es otra cosa sino determinar la suma de los cuadrados de los errores.
-Para cada muestra $x^{(i)}$ en el conjunto de entrenamiento, se
-evalúa la hipótesis en ese vector y se compara con el $y(i)$. La
-fórmula concreta para $m$ muestras es
-$$ J(\theta) = \frac{1}{2m} \sum_{i=1}^{m}{(h_\theta(x^{(i)}) - y^{(i)})^2} $$
+El calculo del costo de la hipótesis se realizó con un \emph{foldl} y una 
+función que saque las cuentas finales. 
+Para poder realizar el cálculo en una sola pasada el acumulador del fold
+debe ser un par ordenado donde se vayan acumulando la suma de las evaluaciones
+y la cantidad de muestras observadas. Una vez terminado el fold se aplica la 
+función \emph{result} que extrae la información del par generado y calcula el
+costo final.
 
 \begin{lstlisting}
 
 > cost :: Hypothesis Double -> [Sample Double] -> Double
 > cost h ss = result $ foldl acum (0,0) ss
->           where acum (sum, n) s = (sum + (theta h s - y s) ^ 2 , n + 1)
->                 result (finalSum, finaln) = finalSum / (2 * finaln)
+>     where acum (sum, n) s = (sum + (theta h s - y s)^2 , n+1)
+>           result (finalSum, finaln) = finalSum / (2 * finaln)
 
 \end{lstlisting}
 
-Su función debe ser escrita como un \emph{fold} que realice todos
-los cómputos en \emph{una sola pasada} sobre el conjunto de muestras.
-Debe escribirla de manera general, suponiendo que \texttt{ss} podría
-tener una cantidad arbitraria de muestras disponibles.
-
 \subsection{Bajando por el gradiente}
-
-El algoritmo de descenso de gradiente por lotes es sorprendentemente
-sencillo. Se trata de un algoritmo iterativo que parte de una
-hipótesis $\theta$ que tiene un costo $c$, determina la dirección
-en el espacio vectorial que maximiza el descenso, y produce una
-nueva hipótesis $\theta'$ con un nuevo costo $c'$ tal que $c' \leq c$.
-La ``velocidad'' con la cual se desciende por el gradiente viene
-dada por el coeficiente ``de aprendizaje'' $\alpha$.
-
-Dejando el álgebra vectorial de lado por un momento, porque no
-importa para esta materia, es natural pensar que nuestro algoritmo
-iterativo tendrá que detenerse cuando la diferencia entre $c$ y $c'$
-sea $\epsilon-$despreciable.
-
-La primera parte de este algoritmo, y sin duda la función más
-complicada de este ejercicio, es aquella que dada una hipótesis
-y un conjunto de entrenamiento, debe producir una nueva hipótesis
-mejorada según el coeficiente de aprendizaje.
 
 \begin{lstlisting}
 
 > descend :: Double -> Hypothesis Double -> [Sample Double]
 >         -> Hypothesis Double
-> descend alpha h ss = undefined
+> descend alpha h ss = reverse $ foldl improve [] h
+>     where improve hn hj = result (foldl evaluate ) : hj
+>           where  
 
 \end{lstlisting}
 
