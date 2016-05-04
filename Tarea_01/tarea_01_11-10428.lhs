@@ -82,7 +82,7 @@
 > epsilon = 0.0000001
 
 > guess :: Hypothesis Double
-> guess = Hypothesis { c = [1.0, 2.0, 3.0] }
+> guess = Hypothesis { c = [0, 0, 0] }
 
 > training :: [Sample Double]
 > training = [ 
@@ -144,6 +144,7 @@ Dos flotantes se consideraran \emph{cercanos} en el caso en el que la
 diferencia entre ambos sea menor a $\epsilon$.
 
 \begin{lstlisting}
+
 > veryClose :: Double -> Double -> Bool
 > veryClose v0 v1 = abs (v1 - v0) < epsilon 
 
@@ -201,9 +202,11 @@ costo final.
 
 > descend :: Double -> Hypothesis Double -> [Sample Double]
 >         -> Hypothesis Double
-> descend alpha h ss = reverse $ foldl improve [] h
->     where improve hn hj = result (foldl evaluate ) : hj
->           where  
+> descend alpha h ss = Hypothesis $ extract $ foldl improve ([],0) (c h)
+>     where extract (xs,_) = reverse xs
+>           improve (hn,n) hj = ((hj - (result $ foldl (error n) (0,0) ss)):hn, n+1)
+>                 where result (acum, m) = acum * alpha / m 
+>                       error n (acum, m) s = (acum + (theta h s - (y s))*((x s) !! n), m+1)
 
 \end{lstlisting}
 
