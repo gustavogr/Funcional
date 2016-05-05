@@ -166,9 +166,9 @@ lista de coeficientes.
 
 \subsubsection{Evaluando Hipótesis}
 La evaluación de la hipótesis sobre una muestra implica realizar el producto punto
-de el vector de coeficientes de la hipotesis con el vector $x$ de la muestra.
+de el vector de coeficientes de la hipótesis con el vector $x$ de la muestra.
 Partiendo de la suposición de que ambos vectores tienen la misma dimensión
-se puede definir el producto punto como un \emph{foldl} sobre el zip de ambos vectores.
+se puede definir el producto punto como un \texttt{foldl} sobre el zip de ambos vectores.
 La función pasada al fold toma el par ($h_i$ , $x_i$), multiplica ambos términos
 y los suma al acumulador.
 
@@ -179,13 +179,15 @@ y los suma al acumulador.
 >       where acum sum (h,s) = sum + (h*s)
 
 \end{lstlisting}
-El calculo del costo de la hipótesis se realizó con un \emph{foldl} y una 
+El cálculo del costo de la hipótesis se realizó con un \texttt{foldl} y una 
 función que saque las cuentas finales. 
 Para poder realizar el cálculo en una sola pasada el acumulador del fold
 debe ser un par ordenado donde se vayan acumulando la suma de las evaluaciones
 y la cantidad de muestras observadas. Una vez terminado el fold se aplica la 
-función \emph{result} que extrae la información del par generado y calcula el
+función \texttt{result} que extrae la información del par generado y calcula el
 costo final.
+
+\clearpage
 
 \begin{lstlisting}
 
@@ -198,158 +200,95 @@ costo final.
 
 \subsection{Bajando por el gradiente}
 
+La función \texttt{descend} fue escrita con dos folds como fue indicado.
+El fold externo recorre la lista de variables de la hipótesis a mejorar,
+llevando un control de cual es la posición que se está recorriendo, pues es
+necesario para el fold interno. Luego el fold interno se encarga de realizar 
+el cálculo de la variable mejorada. Para hacer esto recorre todo el conjunto
+de muestras acumulando la sumatoria de error y contando cuantas muestras se han
+observado. Los resultados de ambos fold deben ser pasados a sendas funciones 
+auxiliares que extraigan el valor deseado del acumulador resultante.
+
 \begin{lstlisting}
 
 > descend :: Double -> Hypothesis Double -> [Sample Double]
 >         -> Hypothesis Double
-> descend alpha h ss = Hypothesis $ extract $ foldl improve ([],0) (c h)
->     where extract (xs,_) = reverse xs
->           improve (hn,n) hj = ((hj - (result $ foldl (error n) (0,0) ss)):hn, n+1)
->                 where result (acum, m) = acum * alpha / m 
->                       error n (acum, m) s = (acum + (theta h s - (y s))*((x s) !! n), m+1)
+> descend alpha h ss = Hypothesis $ 
+>                       extract $ foldl improve ([],0) (c h)
+>   where extract (xs,_)    = reverse xs
+>         improve (h',n) hj = ((hj - 
+>                               (result $ foldl (err n) (0,0) ss)
+>                             ):h', n+1)
+>           where result (ac, m)  = ac * alpha / m 
+>                 err n (ac, m) s = (ac + 
+>                                       (theta h s - (y s))*
+>                                              ((x s) !! n)
+>                                   , m+1)
 
 \end{lstlisting}
 
-Sea $\theta_j$ el $j-$ésimo componente del vector $\theta$
-correspondiente a la hipótesis actual que pretendemos mejorar. La
-función debe calcular, para todo $j$
-
-$$\theta'_j \leftarrow \theta_j -
-\frac{\alpha}{m}\sum_{i=1}^m{(h_\theta(x^{(i)})-y^{(i)})x_j^{(i)}}$$
-
-donde $m$ es el número de muestras de entrenamiento.
-
-Su función debe ser escrita exclusivamente empleando funciones
-de orden superior. En particular, se trata de dos \emph{fold}
-anidados, cada uno de ellos realizando sus cómputos en
-\emph{una sola pasada}. Debe escribirla de manera general,
-suponiendo que \texttt{ss} podría tener una cantidad arbitraria
-de muestras disponibles y que $j$ es arbitrario.
-
-La segunda parte de este algoritmo debe partir de una hipótesis
-inicial y el conjunto de entrenamiento, para producir una lista
-de elementos tales que permitan determinar, para cada iteración,
-cuál es la hipótesis mejorada y el costo de la misma.
+Finalmente queda definir la función gd. Fue escrita usando un \texttt{unfoldr}.
+Las semillas son de tipo \texttt{(Hypothesis Double, Integer)} pues se debe
+llevar también el número de iteraciones para agregarlo a la tupla de resultado.
+La iteración se termina cuando el costo de la nueva hipótesis y el costo de la 
+anterior son $e-$cercanas.
 
 \begin{lstlisting}
 
 > gd :: Double -> Hypothesis Double -> [Sample Double]
 >    -> [(Integer,Hypothesis Double,Double)]
-> gd alpha h ss = undefined
+> gd alpha h ss = unfoldr go (h,0)
+>   where go (h,n) = if veryClose (cost h ssw1) (cost h' ssw1) 
+>                    then Nothing
+>                    else Just ((n, h, cost h ssw1), (h', n+1))
+>           where ssw1 = addOnes ss
+>                 h'   = descend alpha h ssw1
 
 \end{lstlisting}
-
-Su función debe ser escrita como un \emph{unfold}. Note que esta
-será la función ``tope'', por lo tanto debe asegurarse de agregar
-los coeficientes 1 antes de comenzar a iterar, y mantener la
-iteración hasta que la diferencia entre los costos de dos
-hipótesis consecutivas sean $\epsilon-$despreciables.
-
-\subsection{¿Cómo sé si lo estoy haciendo bien?}
-
-Probar las funciones \texttt{veryClose}, \texttt{addOnes}
-y \texttt{theta} es trivial por inspección. Para probar la
-función \texttt{cost} tendrá que hacer algunos cálculos a
-mano con muestras pequeñas y comprobar los resultados que
-arroja la función. Preste atención que estas funciones
-\emph{asumen} que las muestras ya incluyen el coeficiente
-constante 1.
-
-Probar la función \texttt{descend} es algo más complicado,
-pero la sugerencia general es probar paso a paso si se
-produce una nueva hipótesis cuyo costo es, en efecto, menor.
-
-Con las definiciones en este archivo, si su algoritmo está
-implantado correctamente, hay convergencia. Para que tenga
-una idea
-
-\begin{lstlisting}
-  ghci> take 3 (gd alpha guess training)
-  [(0,Hypothesis {c = [0.0,0.0,0.0]},6.559154810645744e10),
-   (1,Hypothesis {c = [10212.379787234042,3138.9880129854737,...
-   (2,Hypothesis {c = [20118.388180851063,6159.113611965675,...]
-\end{lstlisting}
-
-y si se deja correr hasta terminar converge (el \emph{unfold}
-\textbf{termina}) y los resultados numéricos en la última tripleta
-deberían ser muy parecidos a (indentación mía)
-
-\begin{lstlisting}
-  (1072,
-  Hypothesis {c = [340412.65957446716,
-                   110631.04133702737,
-                   -6649.4653290010865]},
-  2.043280050602863e9)
-\end{lstlisting}
-
-Para su comodidad, he incluido la función \texttt{graph} de la
-magnífica librería \texttt{chart} que permite hacer gráficos
-sencillos (línea, torta, barra, etc.). Puede usarla para verificar
-que su función está haciendo el trabajo
-
-\begin{lstlisting}
-  ghci> graph "works" (gd alpha guess training)
-\end{lstlisting}
-
-y en el archivo \texttt{works.png} debe obtener una imagen
-similar a
-\begin{center}
-        \includegraphics[width=11cm]{works.png}
-\end{center}
-
-\subsection{¿Aprendió?}
-
-Una vez que el algoritmo converge, obtenga la última hipótesis
-y úsela para predecir el valor $y$ asociado al vector
-$(-0.44127, -0.22368)$.
-
-\begin{verbatim}
-  ghci> let (_,h,_) = last (gd alpha guess training)
-  ghci> let s = Sample ( x = [1.0, -0.44127,-0.22368], y = undefined }
-  ghci> theta h s
-  293081.85236
-\end{verbatim}
 
 \section{Monoids}
 
-Durante la discusión en clase acerca de \texttt{Monoid} se dejó
-claro que para algunos tipos de datos existe más de una instancia
-posible. En concreto, para los números puede construirse una
-instancia \texttt{Sum} usando \texttt{(+)} como operación y
-\texttt{0} como elemento neutro, pero también puede construirse
-una instancia \texttt{Product} usando \texttt{(*)} como operación
-y \texttt{1} como elemento neutro. La solución al problema resultó
-ser el uso de tipos equivalentes pero incompatibles aprovechando
-\texttt{newtype}.
+Para tomar en cuenta los casos en los que el \texttt{Foldable} esté
+vacío se define el tipo \texttt{Max a} como una instancia de 
+\texttt{Maybe a}.
 
-Siguiendo esa idea, construya una instancia \texttt{Monoid}
-\emph{polimórfica} para \emph{cualquier} tipo comparable, tal que
-al aplicarla sobre cualquier \texttt{Foldable} conteniendo 
-elementos de un tipo concreto comparable, se retorne el máximo
-valor almacenado, si existe. La aplicación se logra con la
-función
+\begin{lstlisting}
 
-\begin{verbatim}
-foldMap :: (Foldable t, Monoid m) => (a -> m) -> t a -> m
-\end{verbatim}
+> newtype Max a = Max { getMax :: Maybe a } deriving (Eq, Show)
 
-Note que en este caso \texttt{a} es el tipo comparable, y la
-primera función debe levantar el valor libre al \texttt{Monoid}
-calculador de máximos. Piense que el \texttt{Foldable} \texttt{t}
-\emph{podría} estar vacío (lista, árbol, \ldots) así que el
-\texttt{Monoid} debe operar con ``seguridad''
+\end{lstlisting}
 
-Oriéntese con los siguientes ejemplos
+Para que nuestro tipo \texttt{Max a} pueda instanciar la clase \texttt{Monoid}
+debemos pedir como mínimo que el tipo \texttt{a} sea instancia de \texttt{Ord}.
 
-\begin{verbatim}
-ghci> foldMap (Max . Just) []
-Max {getMax = Nothing}
-ghci> foldMap (Max . Just) ["foo","bar","baz"]
-Max {getMax = Just "foo"}
-ghci> foldMap (Max . Just) (Node 6 [Node 42 [], Node 7 [] ])
-Max {getMax = Just 42}
-ghci> foldMap (Max . Just) (Node [] [])
-\end{verbatim}
+\begin{lstlisting}
+
+> instance Ord a => Monoid (Max a) where
+
+\end{lstlisting}
+
+Solo falta definir las funciones \texttt{mempty} y \texttt{mappend}.
+\texttt{Mempty} lo usaremos para representar el caso base de nuestro
+\emph{Monoide}, que en el caso de la clase \texttt{Maybe} es \texttt{Nothing}.
+
+\begin{lstlisting}
+
+>   mempty = Max Nothing
+
+\end{lstlisting}
+
+\texttt{Mappend} de dos elementos se define como el máximo de sus dos valores, en 
+caso de que ninguno sea \texttt{Nothing}.  
+
+\begin{lstlisting}
+
+>   mappend x y = case getMax x of 
+>                   Nothing -> y
+>                   Just n -> case getMax y of 
+>                               Just m -> (Max . Just) $ max m n
+>                               _ -> x 
+
+\end{lstlisting}
 
 \section{Zippers}
 
