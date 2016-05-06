@@ -51,7 +51,7 @@
 11-10428\\
 \href{mailto:11-10428@usb.ve}{<11-10428@usb.ve>}}
 
-\date{Abril 27, 2016}
+\date{Mayo 06, 2016}
 
 \maketitle
 
@@ -66,6 +66,7 @@
 > import Data.Monoid
 > import Data.Foldable (foldMap)
 > import Data.Tree
+> import Data.Maybe
 > import Graphics.Rendering.Chart.Easy
 > import Graphics.Rendering.Chart.Backend.Cairo
 
@@ -136,9 +137,8 @@
 
 }
 
-\subsection{Implementación}
 
-\subsubsection{Comparar en punto flotante}
+\subsection{Comparar en punto flotante}
 
 Dos flotantes se consideraran \emph{cercanos} en el caso en el que la
 diferencia entre ambos sea menor a $\epsilon$.
@@ -150,11 +150,11 @@ diferencia entre ambos sea menor a $\epsilon$.
 
 \end{lstlisting}
 
-\subsubsection{Congruencia dimensional}
+\subsection{Congruencia dimensional}
 
 Para solucionar la congruencia dimensional se le hace un map a la lista
-de Samples con una función que toma un Sample y le agrega un uno a su 
-lista de coeficientes.
+de \texttt{Samples} con una función que toma un \texttt{Sample} y le agrega 
+un uno a su lista de coeficientes.
 
 \begin{lstlisting}
 
@@ -164,7 +164,7 @@ lista de coeficientes.
 
 \end{lstlisting}
 
-\subsubsection{Evaluando Hipótesis}
+\subsection{Evaluando Hipótesis}
 La evaluación de la hipótesis sobre una muestra implica realizar el producto punto
 de el vector de coeficientes de la hipótesis con el vector $x$ de la muestra.
 Partiendo de la suposición de que ambos vectores tienen la misma dimensión
@@ -215,15 +215,14 @@ auxiliares que extraigan el valor deseado del acumulador resultante.
 >         -> Hypothesis Double
 > descend alpha h ss = Hypothesis $ 
 >                       extract $ foldl improve ([],0) (c h)
->   where extract (xs,_)    = reverse xs
->         improve (h',n) hj = ((hj - 
->                               (result $ foldl (err n) (0,0) ss)
+>   where 
+>     extract (xs,_)    = reverse xs
+>     improve (h',n) hj = ((hj-(result $ foldl (err n) (0,0) ss)
 >                             ):h', n+1)
->           where result (ac, m)  = ac * alpha / m 
->                 err n (ac, m) s = (ac + 
->                                       (theta h s - (y s))*
->                                              ((x s) !! n)
->                                   , m+1)
+>       where 
+>         result (ac, m)  = ac * alpha / m 
+>         err n (ac, m) s = (ac+ (theta h s - (y s))*((x s) !! n)
+>                                      , m+1)
 
 \end{lstlisting}
 
@@ -232,6 +231,8 @@ Las semillas son de tipo \texttt{(Hypothesis Double, Integer)} pues se debe
 llevar también el número de iteraciones para agregarlo a la tupla de resultado.
 La iteración se termina cuando el costo de la nueva hipótesis y el costo de la 
 anterior son $e-$cercanas.
+
+\clearpage
 
 \begin{lstlisting}
 
@@ -248,9 +249,8 @@ anterior son $e-$cercanas.
 
 \section{Monoids}
 
-Para tomar en cuenta los casos en los que el \texttt{Foldable} esté
-vacío se define el tipo \texttt{Max a} como una instancia de 
-\texttt{Maybe a}.
+Para que el \texttt{Monoid} opere con seguridad sobre el \texttt{Foldable} 
+se define el tipo \texttt{Max a} como una instancia de \texttt{Maybe a}.
 
 \begin{lstlisting}
 
@@ -261,64 +261,128 @@ vacío se define el tipo \texttt{Max a} como una instancia de
 Para que nuestro tipo \texttt{Max a} pueda instanciar la clase \texttt{Monoid}
 debemos pedir como mínimo que el tipo \texttt{a} sea instancia de \texttt{Ord}.
 
-\begin{lstlisting}
+Luego falta definir las funciones \texttt{mempty} y \texttt{mappend}.
 
-> instance Ord a => Monoid (Max a) where
-
-\end{lstlisting}
-
-Solo falta definir las funciones \texttt{mempty} y \texttt{mappend}.
 \texttt{Mempty} lo usaremos para representar el caso base de nuestro
 \emph{Monoide}, que en el caso de la clase \texttt{Maybe} es \texttt{Nothing}.
 
+Finalmente el \texttt{mappend} de dos elementos se define como el máximo de sus 
+dos valores, en caso de que ninguno sea \texttt{Nothing}.  
+
 \begin{lstlisting}
 
+> instance Ord a => Monoid (Max a) where
 >   mempty = Max Nothing
-
-\end{lstlisting}
-
-\texttt{Mappend} de dos elementos se define como el máximo de sus dos valores, en 
-caso de que ninguno sea \texttt{Nothing}.  
-
-\begin{lstlisting}
-
 >   mappend x y = case getMax x of 
 >                   Nothing -> y
 >                   Just n -> case getMax y of 
+>                               Nothing -> x 
 >                               Just m -> (Max . Just) $ max m n
->                               _ -> x 
 
 \end{lstlisting}
 
 \section{Zippers}
 
-Considere el tipo de datos
+Para movernos por nuestro sistema de archivos es necesario recordar
+quién es nuestro ``padre'' y quienes son nuestros ``hermanos''. Es por 
+eso que el tipo de datos \texttt{Crumb} contiene el elemento del padre,
+la lista de hermanos que quedan a la izquierda y la lista de hermanos que
+quedan a la derecha. 
+
+Luego un \texttt{Breadcrumbs} es una lista de \texttt{Breads}, y un 
+\texttt{Zipper} es un par con un \texttt{Filesystem} y un \texttt{Breadcrumbs}.
 
 \begin{lstlisting}
 
 > data Filesystem a = File a | Directory a [Filesystem a]
+>                     deriving (Show, Eq) 
+
+> data Crumb a = Crumb a [Filesystem a] [Filesystem a]
+>               deriving (Show, Eq)
+
+> type Breadcrumbs a = [Crumb a]
+
+> type Zipper a = (Filesystem a, Breadcrumbs a)
 
 \end{lstlisting}
 
-Diseñe un zipper seguro para el tipo \texttt{Filesystem}
-proveyendo todas las funciones de soporte que permitan trasladar
-el foco dentro de la estructura de datos, así como la modificación
-de cualquier posición dentro de la estructura.
+En nuestro sistema de archivos solo se puede bajar cuando el foco
+actual este sobre un directorio, y este a su vez debe tener al menos
+un hijo en su lista de archivos.
 
 \begin{lstlisting}
 
- data Breadcrumbs a = undefined
+> goDown :: Zipper a -> Maybe (Zipper a)
+> goDown (File _, _)            = Nothing
+> goDown (Directory _ [], _)    = Nothing
+> goDown (Directory d (f:fs), bs) = Just (f, Crumb d [] fs:bs)
 
- type Zipper a = (Filesystem a, Breadcrumbs a)
+\end{lstlisting}
 
- goDown   ::
- goRight  ::
- goLeft   ::
- goBack   ::
- tothetop :: 
- modify   ::
- focus    ::
- defocus  ::
+Para los movimientos hacia la izquierda y la derecha es necesario revisar
+el último \texttt{Crumb} para obtener la lista de hermanos.
+
+A la hora de movernos a la derecha hay que verificar que queden elementos en 
+la lista derecha. Análogamente si nos vamos a mover a la izquierda debemos 
+cerciorarnos que queden archivos en la lista izquierda.
+
+En ambos casos es necesario actualizar las listas del \texttt{Bread} para 
+garantizar que se mantenga la estructura del \texttt{Filesystem}.
+
+\begin{lstlisting}
+
+> goRight :: Zipper a -> Maybe (Zipper a)
+> goRight (_, [])     = Nothing
+> goRight (c, (b:bs)) = 
+>           case b of 
+>             Crumb _  _  []    -> Nothing
+>             Crumb d ls (r:rs) -> Just (r, Crumb d (c:ls) rs:bs)
+
+> goLeft :: Zipper a -> Maybe (Zipper a)
+> goLeft (_, [])      = Nothing
+> goLeft (c, (b:bs))  = 
+>           case b of
+>             Crumb _  []  _    -> Nothing
+>             Crumb d (l:ls) rs -> Just (l, Crumb d ls (c:rs):bs)
+
+\end{lstlisting}
+
+Para retroceder se observa el último \texttt{Crumb} agregado. Se obtiene el 
+contenido del padre y las listas de hermanos para armar el \texttt{Directory} 
+correspondiente. Como la lista de hermanos a la izquierda se guarda en sentido
+inverso, se puede hacer un \texttt{foldl} acumulando sobre la lista de hermanos
+a la derecha para rearmar la lista original.
+
+\begin{lstlisting}
+
+> goBack :: Zipper a -> Maybe (Zipper a)
+> goBack (_,[])                 = Nothing
+> goBack (f, Crumb d ls rs:bs)  = Just (Directory d sons, bs)
+>     where sons = foldl (flip (:)) (f:rs) ls
+
+\end{lstlisting}
+La función \texttt{tothetop} se define como una llamada recursiva a 
+\texttt{goback} hasta que la liste de \texttt{Crumbs} se encuentre vacía.
+
+Por su parte, \texttt{modify} implica aplicar la función de transformación
+al archivo que este en foco.
+
+La implentación de \texttt{focus} y \texttt{defocus} es trivial.
+\begin{lstlisting}
+
+> tothetop :: Zipper a -> Zipper a
+> tothetop (fs, []) = (fs, [])
+> tothetop z        = tothetop $ fromJust $ goBack z
+
+> modify :: (a -> a) -> Zipper a -> Zipper a
+> modify f (Directory x fs, bs) = (Directory (f x) fs, bs)
+> modify f (File x, bs)         = (File (f x), bs)
+
+> focus :: Filesystem a -> Zipper a
+> focus f = (f,[])
+
+> defocus :: Zipper a -> Filesystem a
+> defocus (f,_) = f
 
 \end{lstlisting}
 
