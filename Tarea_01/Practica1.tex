@@ -1,0 +1,34 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\setlength\parindent{0pt}
+\setlength{\parskip}{\baselineskip}%
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+\usepackage{color}
+\usepackage{graphicx}
+
+\begin{document}
+    \begin{center}
+    	\includegraphics[scale=0.75]{logoUSB}\\[0.1cm]
+    	\textsc{Universidad Simón Bolívar}\\[0.7cm]
+        { \LARGE \bfseries Práctica 1}\\[0.3cm]
+        \textsc{Gustavo Gutiérrez - 11-10428}\\[0.1cm]
+    \end{center}
+\clearpage
+
+\section{Pregunta 1}
+\begin{enumerate}
+	\item gpg --gen-key prueba
+	\item El passphrase se utiliza como contraseña de acceso al archivo de la clave
+		privada para evitar que terceros puedan usar nuestra clave privada. En el caso de que nos vulneren la llave,
+		el vencimiento de la misma garantiza que el tercero malicioso no pueda usar la llave indefinidamente.
+	\item \includegraphics[scale=0.02]{captura}\\ Gpg muestra la siguiente información:
+	\begin{itemize}
+		\item La clave publica bajo la etiqueta pub.
+		\item El fingerprint de la clave privada. Es una versión abreviada de la misma.
+		\item La información del usuario asociado a la llave.
+		\item La subclave generada para encriptar.
+	\end{itemize}
+\end{enumerate}
+\end{document}
+
