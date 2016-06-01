@@ -12,15 +12,15 @@ element = eol <|> code <|> try(h1) <|> try(h2) <|> paragraph
 h1 :: Parser String
 h1 = do whitespaces
         char '*'
-        cont <- many $ validChar
-        eol <?> "end of line to finish h1 block."
+        cont <- many $ reducedWhites
+        eol <|> eof'
         return $ "<h1>" ++ concat cont ++ "</h1>"++"\n"
 
 h2 :: Parser String
 h2 = do whitespaces
         char '#'
-        cont <- many $ validChar
-        eol <?> "end of line to finish h2 block."
+        cont <- many $ reducedWhites
+        eol <|> eof'
         return $ "<h2>" ++ concat cont ++ "</h2>"++"\n"
 
 code :: Parser String
@@ -30,17 +30,17 @@ code = do cont <- many1 $ codeLine
 codeLine :: Parser String
 codeLine = do string "> "
               cont <- many $ validChar
-              eol <?> "end of line to finish codeLine." 
+              eol <|> eof'
               return $ concat cont
               
 paragraph :: Parser String
-paragraph = do  cont <- many parLine
-                eol <?> "end of line to finish paragraph."
+paragraph = do  cont <- many1 parLine
+                eol <|> eof'
                 return $ "<p>\n" ++ unlines cont ++ "</p>" ++ "\n"
 
 parLine :: Parser String
-parLine = do  cont <- many1 validChar
-              eol <?> "end of line to finish parLine."
+parLine = do  cont <- many1 reducedWhites
+              eol <|> eof'
               return $ concat cont
 
 validChar :: Parser String
@@ -49,8 +49,13 @@ validChar = do  c <- noneOf "\n"
                   '&' -> return "&amp;"
                   '<' -> return "&lt;"
                   '>' -> return "&gt;"
-                  ' ' -> whitespaces
                   otherwise -> return [c]
+
+reducedWhites :: Parser String
+reducedWhites = do  s <- validChar
+                    case s of
+                      " " -> whitespaces
+                      otherwise -> return s
 
 whitespaces :: Parser String
 whitespaces = do  many $ char ' '
@@ -59,6 +64,10 @@ whitespaces = do  many $ char ' '
 eol :: Parser String
 eol = do  char '\n'
           return  ""
+          
+eof' :: Parser String
+eof' = do eof
+          return ""
 
 lhsName :: Parser String
 lhsName = do  cont <- manyTill anyChar $ string ".lhs"
