@@ -10,17 +10,17 @@ element :: Parser String
 element = eol <|> code <|> try(h1) <|> try(h2) <|> paragraph 
           
 h1 :: Parser String
-h1 = do whitespace
+h1 = do whitespaces
         char '*'
         cont <- many $ validChar
-        eol <?> "expecting end of line to finish h1 block."
+        eol <?> "end of line to finish h1 block."
         return $ "<h1>" ++ concat cont ++ "</h1>"++"\n"
 
 h2 :: Parser String
-h2 = do whitespace
+h2 = do whitespaces
         char '#'
         cont <- many $ validChar
-        eol <?> "expecting end of line to finish h2 block."
+        eol <?> "end of line to finish h2 block."
         return $ "<h2>" ++ concat cont ++ "</h2>"++"\n"
 
 code :: Parser String
@@ -30,17 +30,17 @@ code = do cont <- many1 $ codeLine
 codeLine :: Parser String
 codeLine = do string "> "
               cont <- many $ validChar
-              eol <?> "expecting end of line to finish codeLine." 
+              eol <?> "end of line to finish codeLine." 
               return $ concat cont
               
 paragraph :: Parser String
 paragraph = do  cont <- many parLine
-                eol <?> "expecting end of line to finish paragraph."
+                eol <?> "end of line to finish paragraph."
                 return $ "<p>\n" ++ unlines cont ++ "</p>" ++ "\n"
 
 parLine :: Parser String
 parLine = do  cont <- many1 validChar
-              eol <?> "expecting end of line to finish parLine."
+              eol <?> "end of line to finish parLine."
               return $ concat cont
 
 validChar :: Parser String
@@ -49,12 +49,12 @@ validChar = do  c <- noneOf "\n"
                   '&' -> return "&amp;"
                   '<' -> return "&lt;"
                   '>' -> return "&gt;"
-                  ' ' -> whitespace
+                  ' ' -> whitespaces
                   otherwise -> return [c]
 
-whitespace :: Parser String
-whitespace = do many $ char ' '
-                return " "
+whitespaces :: Parser String
+whitespaces = do  many $ char ' '
+                  return " "
 
 eol :: Parser String
 eol = do  char '\n'
@@ -62,7 +62,7 @@ eol = do  char '\n'
 
 lhsName :: Parser String
 lhsName = do  cont <- manyTill anyChar $ string ".lhs"
-              eof
+              eof <?> "extension .lhs."
               return cont
 
 parseLHS :: String -> IO ()
@@ -75,7 +75,5 @@ parseLHS file = do  input <- readFile file
                                         print e
                           Right s -> writeFile (s ++ ".html") r
 
-main = do
-        files <- getArgs
-        mapM_ parseLHS files 
-        -- print $ parse lhs "prueba" cont
+main = do files <- getArgs
+          mapM_ parseLHS files 
