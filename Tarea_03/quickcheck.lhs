@@ -45,7 +45,7 @@
 
 \begin{document}
 
-\title{CI4251 - Programación Funcional Avanzada \\ Tarea 3}
+\title{CI4251 - Programación Funcional Avanzada \\ Tarea 3 \\ Quickcheck}
 
 \author{Gustavo Gutiérrez\\
 11-10428\\
@@ -109,8 +109,10 @@
 
 \end{lstlisting}
 
+\clearpage
 \subsection{Propiedades a probar}
 
+\noindent
 Moverse a la izquierda y luego a la derecha sobre un buffer
 devuelve el mismo buffer.
 
@@ -121,6 +123,7 @@ devuelve el mismo buffer.
  
 \end{lstlisting}
 
+\noindent
 Usar \texttt{delete} es lo mismo que moverse a la izquierda y usar
 \texttt{remove}.
 
@@ -129,24 +132,67 @@ Usar \texttt{delete} es lo mismo que moverse a la izquierda y usar
 > prop_left_and_remove bf =
 >   not (atLeft bf) ==> delete bf == (remove . left) bf
  
+\end{lstlisting}
+
+\noindent
+Si nos encontramos al final de un buffer remover no tiene efecto.
+
+\begin{lstlisting}
+
 > prop_remove_at_right str =
 >   bf == remove bf
 >     where bf = (str,"")
+ 
+\end{lstlisting}
+
+\noindent
+Si nos encontramos al inicio de un buffer \texttt{delete} no tiene efecto.
+
+\begin{lstlisting}
  
 > prop_delete_at_left str = 
 >   bf == delete bf
 >     where bf = ("",str)
  
+\end{lstlisting}
+
+\noindent
+Moverse sobre el buffer vacío da el mismo buffer vacío. Pedir el cursor sobre
+el buffer vacío no devuelve nada.
+
+\begin{lstlisting}
+
 > prop_empty_buffer =
 >   bf == left bf && bf == right bf && cursor bf == Nothing
 >     where bf = empty
  
+\end{lstlisting}
+
+\noindent
+Después de insertar un caracter al buffer, si nos movemos a la izquierda
+y pedimos el cursor nos debería mostrar el mismo caracter.
+
+\begin{lstlisting}
+
 > prop_insert_and_check c bf =
 >   c == fromJust bf'
 >     where bf' = (cursor . left . insert c) bf
  
-> prop_insert_and_delete c bf =
->   bf == (delete . insert c) bf
+\end{lstlisting}
+
+\noindent
+Insertar cualquier caracter y luego hacer \texttt{delete} sobre un buffer 
+cualquiera nos debería devolver el mismo buffer.
+
+\begin{lstlisting}
+
+> prop_insert_and_delete bf =
+>   bf == (delete . insert 'p') bf
+ 
+\end{lstlisting}
+
+\ignore{
+\begin{lstlisting}
  
 > return []
 > runTests = $quickCheckAll
@@ -154,3 +200,6 @@ Usar \texttt{delete} es lo mismo que moverse a la izquierda y usar
 > main = runTests
  
 \end{lstlisting}
+}
+
+\end{document}
