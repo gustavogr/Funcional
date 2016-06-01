@@ -1,88 +1,148 @@
-import System.Environment
-import Text.ParserCombinators.Parsec
+\documentclass[11pt,fleqn]{article}
 
-lhs :: Parser String
-lhs = do  elems <- many element
-          eof
-          return $ concat elems
+\usepackage{tikz}
+\usepackage{multicol}
+\usepackage{latexsym}
+\usepackage{array}
+\usepackage[english,spanish]{babel}
+\usepackage{lmodern}
+\usepackage{listings}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[colorlinks=true,urlcolor=blue]{hyperref}
+\usepackage{xcolor}
 
-element :: Parser String
-element = eol <|> code <|> try(h1) <|> try(h2) <|> paragraph 
-          
-h1 :: Parser String
-h1 = do whitespaces
-        char '*'
-        cont <- many $ reducedWhites
-        eol <|> eof'
-        return $ "<h1>" ++ concat cont ++ "</h1>"++"\n"
+\usepackage{algorithmic}
+\usepackage{algorithm}
 
-h2 :: Parser String
-h2 = do whitespaces
-        char '#'
-        cont <- many $ reducedWhites
-        eol <|> eof'
-        return $ "<h2>" ++ concat cont ++ "</h2>"++"\n"
+\usetikzlibrary{positioning,shapes,folding,positioning,shapes,trees}
 
-code :: Parser String
-code = do cont <- many1 $ codeLine
-          return $ "<code>\n" ++ unlines cont ++ "</code>" ++ "\n"
-          
-codeLine :: Parser String
-codeLine = do string "> "
-              cont <- many $ validChar
-              eol <|> eof'
-              return $ concat cont
-              
-paragraph :: Parser String
-paragraph = do  cont <- many1 parLine
-                eol <|> eof'
-                return $ "<p>\n" ++ unlines cont ++ "</p>" ++ "\n"
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  urlcolor=blue
+}
 
-parLine :: Parser String
-parLine = do  cont <- many1 reducedWhites
-              eol <|> eof'
-              return $ concat cont
+\definecolor{brown}{rgb}{0.7,0.2,0}
+\definecolor{darkgreen}{rgb}{0,0.6,0.1}
+\definecolor{darkgrey}{rgb}{0.4,0.4,0.4}
+\definecolor{lightgrey}{rgb}{0.95,0.95,0.95}
 
-validChar :: Parser String
-validChar = do  c <- noneOf "\n"
-                case c of
-                  '&' -> return "&amp;"
-                  '<' -> return "&lt;"
-                  '>' -> return "&gt;"
-                  otherwise -> return [c]
 
-reducedWhites :: Parser String
-reducedWhites = do  s <- validChar
-                    case s of
-                      " " -> whitespaces
-                      otherwise -> return s
 
-whitespaces :: Parser String
-whitespaces = do  many $ char ' '
-                  return " "
+\lstset{
+   language=Haskell,
+   gobble=2,
+   frame=single,
+   framerule=1pt,
+   showstringspaces=false,
+   basicstyle=\footnotesize\ttfamily,
+   keywordstyle=\textbf,
+   backgroundcolor=\color{lightgrey}
+}
 
-eol :: Parser String
-eol = do  char '\n'
-          return  ""
-          
-eof' :: Parser String
-eof' = do eof
-          return ""
+\long\def\ignore#1{}
 
-lhsName :: Parser String
-lhsName = do  cont <- manyTill anyChar $ string ".lhs"
-              eof <?> "extension .lhs."
-              return cont
+\begin{document}
 
-parseLHS :: String -> IO ()
-parseLHS file = do  input <- readFile file
-                    case parse lhs file input of
-                      Left e -> do  putStr "Error: "
-                                    print e
-                      Right r -> case parse lhsName ".html" file of
-                          Left e -> do  putStr "FileNameError: "
-                                        print e
-                          Right s -> writeFile (s ++ ".html") r
+\title{CI4251 - Programación Funcional Avanzada \\ Tarea 3}
 
-main = do files <- getArgs
-          mapM_ parseLHS files 
+\author{Gustavo Gutiérrez\\
+11-10428\\
+\href{mailto:11-10428@usb.ve}{<11-10428@usb.ve>}}
+
+\date{Junio 1, 2016}
+
+\maketitle
+
+\pagebreak
+
+> import System.Environment
+> import Text.ParserCombinators.Parsec
+
+> lhs :: Parser String
+> lhs = do  elems <- many element
+>           eof
+>           return $ concat elems
+
+> element :: Parser String
+> element = eol <|> code <|> try(h1) <|> try(h2) <|> paragraph 
+
+> h1 :: Parser String
+> h1 = do whitespaces
+>         char '*'
+>         cont <- many $ reducedWhites
+>         eol <|> eof'
+>         return $ "<h1>" ++ concat cont ++ "</h1>"++"\n"
+
+> h2 :: Parser String
+> h2 = do whitespaces
+>         char '#'
+>         cont <- many $ reducedWhites
+>         eol <|> eof'
+>         return $ "<h2>" ++ concat cont ++ "</h2>"++"\n"
+
+> code :: Parser String
+> code = do cont <- many1 $ codeLine
+>           return $ "<code>\n" ++ unlines cont ++ "</code>" ++ "\n"
+
+> codeLine :: Parser String
+> codeLine = do string "> "
+>               cont <- many $ validChar
+>               eol <|> eof'
+>               return $ concat cont
+>               
+> paragraph :: Parser String
+> paragraph = do  cont <- many1 parLine
+>                 eol <|> eof'
+>                 return $ "<p>\n" ++ unlines cont ++ "</p>" ++ "\n"
+
+> parLine :: Parser String
+> parLine = do  cont <- many1 reducedWhites
+>               eol <|> eof'
+>               return $ concat cont
+
+> validChar :: Parser String
+> validChar = do  c <- noneOf "\n"
+>                 case c of
+>                   '&' -> return "&amp;"
+>                   '<' -> return "&lt;"
+>                   '>' -> return "&gt;"
+>                   otherwise -> return [c]
+
+> reducedWhites :: Parser String
+> reducedWhites = do  s <- validChar
+>                     case s of
+>                       " " -> whitespaces
+>                       otherwise -> return s
+
+> whitespaces :: Parser String
+> whitespaces = do  many $ char ' '
+>                   return " "
+
+> eol :: Parser String
+> eol = do  char '\n'
+>           return  ""
+
+> eof' :: Parser String
+> eof' = do eof
+>           return ""
+
+> lhsName :: Parser String
+> lhsName = do  cont <- manyTill anyChar $ string ".lhs"
+>               eof <?> "extension .lhs."
+>               return cont
+
+> parseLHS :: String -> IO ()
+> parseLHS file = do  input <- readFile file
+>                     case parse lhs file input of
+>                       Left e -> do  putStr "Error: "
+>                                     print e
+>                       Right r -> case parse lhsName ".html" file of
+>                           Left e -> do  putStr "FileNameError: "
+>                                         print e
+>                           Right s -> writeFile (s ++ ".html") r
+
+> main = do files <- getArgs
+>           mapM_ parseLHS files 
+ 
